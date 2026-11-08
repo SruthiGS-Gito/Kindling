@@ -11,9 +11,6 @@
    between them and every entry point can link straight to the
    right one.
 
-   "Continue with Google" has no backend behind it yet (Part 2,
-   not built in this pass) and stays an honest "coming soon."
-
    There's no forgot-password endpoint anywhere in this backend,
    so per instruction there's no "Forgot password?" link here -
    adding one would promise something that doesn't work.
@@ -40,7 +37,6 @@
     const authSwitch = $('#authSwitch');
     const authForgot = $('#authForgot');
     const authFine = $('#authFine'), authConsent = $('#authConsent');
-    const googleBtn = $('#googleBtn');
 
     function clearErrors() {
         authErr.textContent = '';
@@ -297,79 +293,6 @@
             setLoading(false);
         }
 
-    });
-
-    // Set to a real OAuth Client ID from Google Cloud Console once
-    // one exists (see the deployment notes for the exact steps).
-    // Left blank, the button below honestly says so instead of
-    // half-working.
-    const GOOGLE_CLIENT_ID = '';
-
-    let googleScriptLoaded = false, googleInitialized = false;
-
-    function loadGoogleScript() {
-        if (googleScriptLoaded) return Promise.resolve();
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://accounts.google.com/gsi/client';
-            script.onload = () => { googleScriptLoaded = true; resolve(); };
-            script.onerror = reject;
-            document.head.appendChild(script);
-        });
-    }
-
-    async function handleGoogleCredential(credentialResponse) {
-        setLoading(true);
-        clearErrors();
-        try {
-            const response = await fetch(`${K.API_BASE_URL}/api/auth/google`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_token: credentialResponse.credential })
-            });
-            const data = await response.json().catch(() => ({}));
-
-            if (!response.ok) {
-                authErr.textContent = data.detail || "Couldn't sign in with Google. Please try again.";
-                return;
-            }
-
-            K.setAuth(data.token, data.email, data.name);
-            applySignedInUI();
-            toast(`Welcome, ${data.name}`);
-
-            let redirect = 'explore';
-            try {
-                const remembered = sessionStorage.getItem('kindling_redirect_after_login');
-                sessionStorage.removeItem('kindling_redirect_after_login');
-                if (remembered) redirect = remembered;
-            } catch (error) {}
-            location.hash = redirect;
-        }
-        catch (error) {
-            authErr.textContent = 'Something went wrong on our side. Please try again.';
-        }
-        finally {
-            setLoading(false);
-        }
-    }
-
-    googleBtn.addEventListener('click', async () => {
-        if (!GOOGLE_CLIENT_ID) {
-            authErr.textContent = "Signing in with Google isn't available yet.";
-            return;
-        }
-        try {
-            await loadGoogleScript();
-            if (!googleInitialized) {
-                window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential });
-                googleInitialized = true;
-            }
-            window.google.accounts.id.prompt();
-        }
-        catch (error) {
-            authErr.textContent = "Couldn't load Google sign-in. Please try again.";
-        }
     });
 
     const forgotPasswordLink = $('#forgotPasswordLink');
